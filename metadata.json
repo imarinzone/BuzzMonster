@@ -1,0 +1,6 @@
+{
+  "name": "Quiet Monster",
+  "description": "An interactive classroom noise monitor with a sleeping monster that wakes up if it gets too loud, featuring a teacher dashboard and visual charts.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
