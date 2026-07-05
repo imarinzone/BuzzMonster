@@ -136,7 +136,7 @@ fun ExportDialog(
                         Icon(
                             imageVector = Icons.Default.ContentCopy,
                             contentDescription = "Copy",
-                            modifier = Modifier.size(16.dp)
+                            modifier = Modifier.size(24.dp)
                         )
                         Spacer(modifier = Modifier.width(6.dp))
                         Text("Copy Log Data")

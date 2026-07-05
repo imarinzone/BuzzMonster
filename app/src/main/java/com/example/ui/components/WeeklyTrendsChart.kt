@@ -50,7 +50,7 @@ fun WeeklyTrendsChart(
                     imageVector = Icons.Default.Star,
                     contentDescription = "No trends",
                     tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
-                    modifier = Modifier.size(36.dp)
+                    modifier = Modifier.size(48.dp)
                 )
                 Spacer(modifier = Modifier.height(8.dp))
                 Text(

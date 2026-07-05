@@ -76,19 +76,22 @@ class AudioMonitor(private val context: Context) {
                     while (isActive) {
                         val readResult = audioRecord?.read(buffer, 0, buffer.size) ?: 0
                         if (readResult > 0) {
-                            var maxAbs = 0
+                            // Calculate RMS (Root Mean Square) for accurate volume estimation
+                            var sum = 0.0
                             for (i in 0 until readResult) {
-                                val value = abs(buffer[i].toInt())
-                                if (value > maxAbs) {
-                                    maxAbs = value
-                                }
+                                sum += buffer[i].toDouble() * buffer[i].toDouble()
                             }
+                            val rms = Math.sqrt(sum / readResult)
 
-                            // Scale to 0 - 100
-                            val measuredLevel = (maxAbs / 32768.0f) * 100f
+                            // Convert to dB relative to full scale (dBFS), ranging from -90 dB to 0 dB
+                            val dbfs = if (rms > 0) 20 * Math.log10(rms / 32768.0) else -90.0
+
+                            // Map -55 dBFS (quiet classroom/silence floor) to -10 dBFS (very loud voice/clapping) to 0-100 range
+                            val measuredLevel = (((dbfs - (-55.0)) / (-10.0 - (-55.0))) * 100.0)
+                                .coerceIn(0.0, 100.0).toFloat()
 
                             // Apply moving average smoothing
-                            smoothedLevel = (smoothedLevel * 0.6f) + (measuredLevel * 0.4f)
+                            smoothedLevel = (smoothedLevel * 0.5f) + (measuredLevel * 0.5f)
                             _noiseLevel.value = smoothedLevel.coerceIn(0f, 100f)
                         }
                         delay(50) // Read approx 20 times per second

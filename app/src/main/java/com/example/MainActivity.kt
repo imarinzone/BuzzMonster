@@ -11,6 +11,10 @@ import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.scaleIn
+import androidx.compose.animation.scaleOut
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -114,22 +118,22 @@ fun MainScreen(viewModel: QuietMonsterViewModel) {
                 NavigationBarItem(
                     selected = selectedTab == NavigationTab.CLASSROOM,
                     onClick = { selectedTab = NavigationTab.CLASSROOM },
-                    icon = { Icon(Icons.Default.School, contentDescription = "Classroom") },
-                    label = { Text("Classroom") },
+                    icon = { Icon(Icons.Default.School, contentDescription = "Classroom", modifier = Modifier.size(28.dp)) },
+                    label = { Text("Classroom", fontWeight = FontWeight.Bold) },
                     modifier = Modifier.testTag("tab_classroom")
                 )
                 NavigationBarItem(
                     selected = selectedTab == NavigationTab.DASHBOARD,
                     onClick = { selectedTab = NavigationTab.DASHBOARD },
-                    icon = { Icon(Icons.Default.BarChart, contentDescription = "Dashboard") },
-                    label = { Text("Notebook") },
+                    icon = { Icon(Icons.Default.BarChart, contentDescription = "Dashboard", modifier = Modifier.size(28.dp)) },
+                    label = { Text("Notebook", fontWeight = FontWeight.Bold) },
                     modifier = Modifier.testTag("tab_dashboard")
                 )
                 NavigationBarItem(
                     selected = selectedTab == NavigationTab.SETTINGS,
                     onClick = { selectedTab = NavigationTab.SETTINGS },
-                    icon = { Icon(Icons.Default.Settings, contentDescription = "Settings") },
-                    label = { Text("Settings") },
+                    icon = { Icon(Icons.Default.Settings, contentDescription = "Settings", modifier = Modifier.size(28.dp)) },
+                    label = { Text("Settings", fontWeight = FontWeight.Bold) },
                     modifier = Modifier.testTag("tab_settings")
                 )
             }
@@ -162,9 +166,6 @@ fun MainScreen(viewModel: QuietMonsterViewModel) {
                 )
                 NavigationTab.SETTINGS -> SettingsScreen(
                     viewModel = viewModel,
-                    isSimulatorMode = isSimulatorMode,
-                    currentNoise = currentNoise,
-                    threshold = threshold,
                     selectedMonster = selectedMonster,
                     onExportData = {
                         exportText = viewModel.exportLocalData()
@@ -261,8 +262,11 @@ fun ClassroomScreen(
         verticalArrangement = Arrangement.Center
     ) {
         val monsterSize by animateDpAsState(
-            targetValue = if (isRunningOrPaused) 340.dp else 260.dp,
-            animationSpec = tween(500),
+            targetValue = if (isRunningOrPaused) 360.dp else 280.dp,
+            animationSpec = spring(
+                dampingRatio = Spring.DampingRatioMediumBouncy,
+                stiffness = Spring.StiffnessLow
+            ),
             label = "monster_size"
         )
 
@@ -275,7 +279,11 @@ fun ClassroomScreen(
             onTap = { viewModel.tapMonsterSpike() }
         )
 
-        AnimatedVisibility(visible = isIdle) {
+        AnimatedVisibility(
+            visible = isIdle,
+            enter = fadeIn() + scaleIn(initialScale = 0.9f),
+            exit = fadeOut() + scaleOut(targetScale = 0.9f)
+        ) {
             Column(
                 horizontalAlignment = Alignment.CenterHorizontally,
                 modifier = Modifier.fillMaxWidth()
@@ -334,31 +342,36 @@ fun ClassroomScreen(
 
                 Spacer(modifier = Modifier.height(16.dp))
 
-                // Sound Meter Level
+                // Sound Meter Level & Threshold Slider Card
                 Card(
                     modifier = Modifier.fillMaxWidth(0.9f),
-                    colors = CardDefaults.cardColors(containerColor = Color.Transparent)
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f)),
+                    shape = RoundedCornerShape(16.dp)
                 ) {
-                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    Column(
+                        modifier = Modifier.padding(16.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
                         Row(
                             modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.SpaceBetween
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
                         ) {
                             Text(
                                 text = "Live Sound: ${currentNoise.toInt()}%",
-                                fontSize = 11.sp,
+                                fontSize = 12.sp,
                                 fontWeight = FontWeight.Bold,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
                             Text(
                                 text = "Limit: ${threshold.toInt()}%",
-                                fontSize = 11.sp,
+                                fontSize = 12.sp,
                                 fontWeight = FontWeight.Bold,
                                 color = Color.Red.copy(alpha = 0.8f)
                             )
                         }
 
-                        Spacer(modifier = Modifier.height(4.dp))
+                        Spacer(modifier = Modifier.height(8.dp))
 
                         // Real-time horizontal visual slider
                         Box(
@@ -391,10 +404,86 @@ fun ClassroomScreen(
                                     .background(Color.Red)
                             )
                         }
+
+                        Spacer(modifier = Modifier.height(16.dp))
+
+                        Text(
+                            text = "Slide to Adjust Noise Sensitivity Limit",
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.align(Alignment.Start)
+                        )
+
+                        Slider(
+                            value = threshold,
+                            onValueChange = { viewModel.setNoiseThreshold(it) },
+                            valueRange = 10f..95f,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .testTag("sensitivity_slider")
+                        )
                     }
                 }
 
-                Spacer(modifier = Modifier.height(20.dp))
+                Spacer(modifier = Modifier.height(16.dp))
+
+                // Silence Duration Selector Card
+                Card(
+                    modifier = Modifier.fillMaxWidth(0.9f),
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.15f)),
+                    shape = RoundedCornerShape(16.dp)
+                ) {
+                    Column(
+                        modifier = Modifier.padding(14.dp),
+                        horizontalAlignment = Alignment.Start
+                    ) {
+                        Text(
+                            text = "Set Quiet Time Duration",
+                            fontSize = 13.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.padding(bottom = 8.dp)
+                        )
+
+                        val duration by viewModel.sessionDurationMinutes.collectAsState()
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(6.dp)
+                        ) {
+                            listOf(1, 2, 5, 10, 15).forEach { mins ->
+                                val isSelected = duration == mins
+                                Card(
+                                    modifier = Modifier
+                                        .weight(1f)
+                                        .clickable { viewModel.setSessionDuration(mins) }
+                                        .testTag("duration_$mins"),
+                                    colors = CardDefaults.cardColors(
+                                        containerColor = if (isSelected) MaterialTheme.colorScheme.primary
+                                        else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f)
+                                    )
+                                ) {
+                                    Box(
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .padding(vertical = 10.dp),
+                                        contentAlignment = Alignment.Center
+                                    ) {
+                                        Text(
+                                            text = "${mins}m",
+                                            fontSize = 12.sp,
+                                            fontWeight = FontWeight.Bold,
+                                            color = if (isSelected) MaterialTheme.colorScheme.onPrimary
+                                            else MaterialTheme.colorScheme.onSurface
+                                        )
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(24.dp))
 
                 // Timer control buttons (Idle)
                 Row(
@@ -405,30 +494,31 @@ fun ClassroomScreen(
                     Button(
                         onClick = { viewModel.startSession() },
                         modifier = Modifier
-                            .height(54.dp)
-                            .width(180.dp)
+                            .height(64.dp)
+                            .width(200.dp)
                             .testTag("start_btn"),
-                        shape = RoundedCornerShape(28.dp),
+                        shape = RoundedCornerShape(32.dp),
                         colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)
                     ) {
-                        Icon(Icons.Default.PlayArrow, contentDescription = "Play")
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Text("Start Quiet Time", fontWeight = FontWeight.Bold)
+                        Icon(Icons.Default.PlayArrow, contentDescription = "Play", modifier = Modifier.size(28.dp))
+                        Spacer(modifier = Modifier.width(12.dp))
+                        Text("Start Quiet Time", fontWeight = FontWeight.Bold, fontSize = 16.sp)
                     }
 
                     if (timerState == TimerState.COMPLETED) {
-                        Spacer(modifier = Modifier.width(12.dp))
+                        Spacer(modifier = Modifier.width(16.dp))
                         IconButton(
                             onClick = { viewModel.resetTimerStateToIdle() },
                             modifier = Modifier
-                                .size(54.dp)
+                                .size(64.dp)
                                 .background(MaterialTheme.colorScheme.surfaceVariant, CircleShape)
                                 .testTag("reset_btn")
                         ) {
                             Icon(
                                 Icons.Default.Refresh,
                                 contentDescription = "Reset State",
-                                tint = MaterialTheme.colorScheme.onSurfaceVariant
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier.size(32.dp)
                             )
                         }
                     }
@@ -436,7 +526,11 @@ fun ClassroomScreen(
             }
         }
 
-        AnimatedVisibility(visible = isRunningOrPaused) {
+        AnimatedVisibility(
+            visible = isRunningOrPaused,
+            enter = fadeIn() + scaleIn(initialScale = 0.9f),
+            exit = fadeOut() + scaleOut(targetScale = 0.9f)
+        ) {
             Column(horizontalAlignment = Alignment.CenterHorizontally) {
                 val mins = timeRemaining / 60
                 val secs = timeRemaining % 60
@@ -563,12 +657,13 @@ fun DashboardScreen(
             if (sessionLogs.isNotEmpty()) {
                 IconButton(
                     onClick = onClearData,
-                    modifier = Modifier.testTag("clear_history_btn")
+                    modifier = Modifier.size(48.dp).testTag("clear_history_btn")
                 ) {
                     Icon(
                         imageVector = Icons.Default.Delete,
                         contentDescription = "Clear History",
-                        tint = MaterialTheme.colorScheme.error
+                        tint = MaterialTheme.colorScheme.error,
+                        modifier = Modifier.size(28.dp)
                     )
                 }
             }
@@ -717,14 +812,9 @@ fun DashboardScreen(
 @Composable
 fun SettingsScreen(
     viewModel: QuietMonsterViewModel,
-    isSimulatorMode: Boolean,
-    currentNoise: Float,
-    threshold: Float,
     selectedMonster: MonsterCharacter,
     onExportData: () -> Unit
 ) {
-    val duration by viewModel.sessionDurationMinutes.collectAsState()
-
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -829,96 +919,69 @@ fun SettingsScreen(
         }
 
         Spacer(modifier = Modifier.height(24.dp))
-
-        // Parameter 2: Noise threshold slider with LIVE feedback
+        
+        // Parameter: Sound selection for the selected monster
+        val currentMonsterSound = viewModel.monsterSounds.collectAsState().value[selectedMonster] ?: MonsterSound.ROAR
         Text(
-            text = "Adjust Noise Sensitivity (Threshold Limit)",
-            fontSize = 14.sp,
-            fontWeight = FontWeight.Bold,
-            color = MaterialTheme.colorScheme.primary
-        )
-        Text(
-            text = "Students reset the timer if noise crosses this line. Clap or speak in class to find the perfect level.",
-            fontSize = 11.sp,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            modifier = Modifier.padding(bottom = 8.dp)
-        )
-
-        Card(
-            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f)),
-            shape = RoundedCornerShape(16.dp)
-        ) {
-            Column(modifier = Modifier.padding(16.dp)) {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Text(
-                        text = "Current Noise: ${currentNoise.toInt()}%",
-                        fontSize = 11.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.primary
-                    )
-                    Text(
-                        text = "Threshold: ${threshold.toInt()}%",
-                        fontSize = 13.sp,
-                        fontWeight = FontWeight.ExtraBold,
-                        color = Color.Red
-                    )
-                }
-
-                Slider(
-                    value = threshold,
-                    onValueChange = { viewModel.setNoiseThreshold(it) },
-                    valueRange = 10f..95f,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .testTag("sensitivity_slider")
-                )
-            }
-        }
-
-        Spacer(modifier = Modifier.height(24.dp))
-
-        // Parameter 3: Silence Duration minutes
-        Text(
-            text = "Set Quiet Time Duration",
+            text = "Wake-Up Sound for ${selectedMonster.displayName}",
             fontSize = 14.sp,
             fontWeight = FontWeight.Bold,
             color = MaterialTheme.colorScheme.primary,
             modifier = Modifier.padding(bottom = 8.dp)
         )
-
-        Row(
+        
+        Column(
             modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(8.dp)
+            verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            listOf(1, 2, 5, 10, 15).forEach { mins ->
-                val isSelected = duration == mins
-                Card(
-                    modifier = Modifier
-                        .weight(1f)
-                        .clickable { viewModel.setSessionDuration(mins) }
-                        .testTag("duration_$mins"),
-                    colors = CardDefaults.cardColors(
-                        containerColor = if (isSelected) MaterialTheme.colorScheme.primary
-                        else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f)
-                    )
+            val chunkedSounds = MonsterSound.values().toList().chunked(3)
+            chunkedSounds.forEach { rowSounds ->
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    Box(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(vertical = 12.dp),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Text(
-                            text = "${mins}m",
-                            fontSize = 13.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = if (isSelected) MaterialTheme.colorScheme.onPrimary
-                            else MaterialTheme.colorScheme.onSurface
-                        )
+                    rowSounds.forEach { sound ->
+                        val isSelected = sound == currentMonsterSound
+                        val borderBrush = if (isSelected) {
+                            Brush.sweepGradient(listOf(MaterialTheme.colorScheme.primary, MaterialTheme.colorScheme.secondary))
+                        } else {
+                            null
+                        }
+
+                        Card(
+                            modifier = Modifier
+                                .weight(1f)
+                                .clickable { viewModel.setMonsterSound(selectedMonster, sound) }
+                                .then(
+                                    if (borderBrush != null) Modifier.border(
+                                        2.dp,
+                                        borderBrush,
+                                        RoundedCornerShape(12.dp)
+                                    ) else Modifier
+                                ),
+                            colors = CardDefaults.cardColors(
+                                containerColor = if (isSelected) MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.5f)
+                                else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f)
+                            )
+                        ) {
+                            Column(
+                                modifier = Modifier.padding(12.dp),
+                                horizontalAlignment = Alignment.CenterHorizontally
+                            ) {
+                                Text(
+                                    text = sound.displayName,
+                                    fontSize = 11.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = MaterialTheme.colorScheme.onSurface,
+                                    textAlign = TextAlign.Center
+                                )
+                            }
+                        }
+                    }
+                    if (rowSounds.size < 3) {
+                        repeat(3 - rowSounds.size) {
+                            Spacer(modifier = Modifier.weight(1f))
+                        }
                     }
                 }
             }
@@ -926,7 +989,7 @@ fun SettingsScreen(
 
         Spacer(modifier = Modifier.height(32.dp))
 
-        // Parameter 4: Local privacy actions
+        // Parameter 2: Local privacy actions
         Text(
             text = "Privacy & Local Sharing Tools",
             fontSize = 14.sp,

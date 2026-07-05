@@ -2,6 +2,8 @@ package com.example.viewmodel
 
 import android.app.Application
 import android.content.Context
+import android.media.AudioManager
+import android.media.ToneGenerator
 import android.net.Uri
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.ViewModel
@@ -36,6 +38,15 @@ enum class MonsterCharacter(val displayName: String, val primaryColorHex: String
     IGNIS("Ignis the Fire Spark", "#EF5350", "Crackle... zzz...")
 }
 
+enum class MonsterSound(val displayName: String, val toneType: Int, val durationMs: Int) {
+    ROAR("Low Roar", ToneGenerator.TONE_CDMA_ANSWER, 1000),
+    SCREECH("Screech", ToneGenerator.TONE_CDMA_ABBR_ALERT, 800),
+    BEEP_BOOP("Beep Boop", ToneGenerator.TONE_CDMA_ALERT_NETWORK_LITE, 600),
+    SIREN("Siren", ToneGenerator.TONE_CDMA_EMERGENCY_RINGBACK, 1500),
+    CHIME("Chime", ToneGenerator.TONE_PROP_BEEP, 400),
+    WARNING("Warning Buzz", ToneGenerator.TONE_CDMA_SOFT_ERROR_LITE, 1000)
+}
+
 class QuietMonsterViewModel(
     application: Application,
     private val repository: ClassroomRepository
@@ -43,6 +54,7 @@ class QuietMonsterViewModel(
 
     private val context = application.applicationContext
     val audioMonitor = AudioMonitor(context)
+    private var toneGenerator: ToneGenerator? = null
 
     // Configuration Settings
     private val _noiseThreshold = MutableStateFlow(40f) // 0 to 100
@@ -53,6 +65,9 @@ class QuietMonsterViewModel(
 
     private val _selectedMonster = MutableStateFlow(MonsterCharacter.MIO)
     val selectedMonster = _selectedMonster.asStateFlow()
+
+    private val _monsterSounds = MutableStateFlow<Map<MonsterCharacter, MonsterSound>>(emptyMap())
+    val monsterSounds = _monsterSounds.asStateFlow()
 
     // Timer & Monitoring State
     private val _timerState = MutableStateFlow(TimerState.IDLE)
@@ -96,12 +111,24 @@ class QuietMonsterViewModel(
     private val dateFormat = SimpleDateFormat("yyyy-MM-DD", Locale.getDefault())
 
     init {
+        try {
+            toneGenerator = ToneGenerator(AudioManager.STREAM_MUSIC, 100)
+        } catch (e: Exception) {
+            toneGenerator = null
+        }
+
         // Load default settings from SharedPreferences
         val prefs = context.getSharedPreferences("quiet_monster_prefs", Context.MODE_PRIVATE)
         _noiseThreshold.value = prefs.getFloat("noise_threshold", 45f)
         _sessionDurationMinutes.value = prefs.getInt("session_duration_minutes", 2)
         val savedMonsterIndex = prefs.getInt("selected_monster_index", 0)
         _selectedMonster.value = MonsterCharacter.values().getOrElse(savedMonsterIndex) { MonsterCharacter.MIO }
+
+        val savedSounds = MonsterCharacter.values().associateWith { char ->
+            val soundName = prefs.getString("sound_${char.name}", null)
+            MonsterSound.values().find { it.name == soundName } ?: MonsterSound.values()[char.ordinal % MonsterSound.values().size]
+        }
+        _monsterSounds.value = savedSounds
 
         _timeRemainingSeconds.value = _sessionDurationMinutes.value * 60
 
@@ -128,6 +155,17 @@ class QuietMonsterViewModel(
         _selectedMonster.value = monster
         val prefs = context.getSharedPreferences("quiet_monster_prefs", Context.MODE_PRIVATE)
         prefs.edit().putInt("selected_monster_index", monster.ordinal).apply()
+    }
+
+    fun setMonsterSound(monster: MonsterCharacter, sound: MonsterSound) {
+        val updatedMap = _monsterSounds.value.toMutableMap()
+        updatedMap[monster] = sound
+        _monsterSounds.value = updatedMap
+        val prefs = context.getSharedPreferences("quiet_monster_prefs", Context.MODE_PRIVATE)
+        prefs.edit().putString("sound_${monster.name}", sound.name).apply()
+        
+        // Preview the sound
+        toneGenerator?.startTone(sound.toneType, sound.durationMs)
     }
 
     fun requestAudioPermissionAndRestart() {
@@ -204,6 +242,10 @@ class QuietMonsterViewModel(
         _resetsCount.value += 1
         _monsterMood.value = MonsterMood.AWAKE
         _wakeUpAlert.value = true
+
+        // Play wake up sound for the selected monster
+        val sound = _monsterSounds.value[_selectedMonster.value] ?: MonsterSound.ROAR
+        toneGenerator?.startTone(sound.toneType, sound.durationMs)
 
         // Reset timer back to full duration
         _timeRemainingSeconds.value = _sessionDurationMinutes.value * 60
@@ -282,7 +324,12 @@ class QuietMonsterViewModel(
 
     // Trigger simulation spike (for kid-interactive tapping)
     fun tapMonsterSpike() {
-        audioMonitor.simulateSpike(85f)
+        if (_timerState.value == TimerState.IDLE) {
+            val sound = _monsterSounds.value[_selectedMonster.value] ?: MonsterSound.ROAR
+            toneGenerator?.startTone(sound.toneType, sound.durationMs)
+        } else {
+            audioMonitor.simulateSpike(85f)
+        }
     }
 
     // Export local SQLite data to JSON format in a file and return local content
@@ -332,6 +379,7 @@ class QuietMonsterViewModel(
     override fun onCleared() {
         super.onCleared()
         audioMonitor.stopMonitoring()
+        toneGenerator?.release()
     }
 }
 
