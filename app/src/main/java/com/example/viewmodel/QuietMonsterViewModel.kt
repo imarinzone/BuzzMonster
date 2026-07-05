@@ -69,6 +69,12 @@ class QuietMonsterViewModel(
     private val _monsterSounds = MutableStateFlow<Map<MonsterCharacter, MonsterSound>>(emptyMap())
     val monsterSounds = _monsterSounds.asStateFlow()
 
+    private val _backgroundListeningEnabled = MutableStateFlow(false)
+    val backgroundListeningEnabled = _backgroundListeningEnabled.asStateFlow()
+
+    private val _floatingBubbleEnabled = MutableStateFlow(false)
+    val floatingBubbleEnabled = _floatingBubbleEnabled.asStateFlow()
+
     // Timer & Monitoring State
     private val _timerState = MutableStateFlow(TimerState.IDLE)
     val timerState = _timerState.asStateFlow()
@@ -130,6 +136,9 @@ class QuietMonsterViewModel(
         }
         _monsterSounds.value = savedSounds
 
+        _backgroundListeningEnabled.value = prefs.getBoolean("background_listening", false)
+        _floatingBubbleEnabled.value = prefs.getBoolean("floating_bubble", false)
+
         _timeRemainingSeconds.value = _sessionDurationMinutes.value * 60
 
         // Start background recording of noise level (untracked when session isn't running, but displays visual feedback)
@@ -166,6 +175,18 @@ class QuietMonsterViewModel(
         
         // Preview the sound
         toneGenerator?.startTone(sound.toneType, sound.durationMs)
+    }
+
+    fun toggleBackgroundListening(enabled: Boolean) {
+        _backgroundListeningEnabled.value = enabled
+        val prefs = context.getSharedPreferences("quiet_monster_prefs", Context.MODE_PRIVATE)
+        prefs.edit().putBoolean("background_listening", enabled).apply()
+    }
+
+    fun toggleFloatingBubble(enabled: Boolean) {
+        _floatingBubbleEnabled.value = enabled
+        val prefs = context.getSharedPreferences("quiet_monster_prefs", Context.MODE_PRIVATE)
+        prefs.edit().putBoolean("floating_bubble", enabled).apply()
     }
 
     fun requestAudioPermissionAndRestart() {

@@ -1,0 +1,30 @@
+--- app/src/main/java/com/example/viewmodel/QuietMonsterViewModel.kt
++++ app/src/main/java/com/example/viewmodel/QuietMonsterViewModel.kt
+@@ -69,6 +69,12 @@
+     private val _monsterSounds = MutableStateFlow<Map<MonsterCharacter, MonsterSound>>(emptyMap())
+     val monsterSounds = _monsterSounds.asStateFlow()
+ 
++    private val _backgroundListeningEnabled = MutableStateFlow(false)
++    val backgroundListeningEnabled = _backgroundListeningEnabled.asStateFlow()
++
++    private val _floatingBubbleEnabled = MutableStateFlow(false)
++    val floatingBubbleEnabled = _floatingBubbleEnabled.asStateFlow()
++
+     // Timer & Monitoring State
+     private val _timerState = MutableStateFlow(TimerState.IDLE)
+     val timerState = _timerState.asStateFlow()
+@@ -201,6 +207,14 @@
+         _monsterSounds.value = currentSounds
+     }
+ 
++    fun toggleBackgroundListening(enabled: Boolean) {
++        _backgroundListeningEnabled.value = enabled
++    }
++
++    fun toggleFloatingBubble(enabled: Boolean) {
++        _floatingBubbleEnabled.value = enabled
++    }
++
+     fun setNoiseThreshold(threshold: Float) {
+         _noiseThreshold.value = threshold
+     }

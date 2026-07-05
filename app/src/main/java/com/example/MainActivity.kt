@@ -447,39 +447,24 @@ fun ClassroomScreen(
                         )
 
                         val duration by viewModel.sessionDurationMinutes.collectAsState()
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.spacedBy(6.dp)
-                        ) {
-                            listOf(1, 2, 5, 10, 15).forEach { mins ->
-                                val isSelected = duration == mins
-                                Card(
-                                    modifier = Modifier
-                                        .weight(1f)
-                                        .clickable { viewModel.setSessionDuration(mins) }
-                                        .testTag("duration_$mins"),
-                                    colors = CardDefaults.cardColors(
-                                        containerColor = if (isSelected) MaterialTheme.colorScheme.primary
-                                        else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f)
-                                    )
-                                ) {
-                                    Box(
-                                        modifier = Modifier
-                                            .fillMaxWidth()
-                                            .padding(vertical = 10.dp),
-                                        contentAlignment = Alignment.Center
-                                    ) {
-                                        Text(
-                                            text = "${mins}m",
-                                            fontSize = 12.sp,
-                                            fontWeight = FontWeight.Bold,
-                                            color = if (isSelected) MaterialTheme.colorScheme.onPrimary
-                                            else MaterialTheme.colorScheme.onSurface
-                                        )
-                                    }
-                                }
-                            }
-                        }
+                        
+                        Text(
+                            text = "${duration} Minutes",
+                            fontSize = 12.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.onSurface,
+                            modifier = Modifier.padding(bottom = 4.dp)
+                        )
+                        
+                        Slider(
+                            value = duration.toFloat(),
+                            onValueChange = { viewModel.setSessionDuration(it.toInt()) },
+                            valueRange = 1f..60f,
+                            steps = 58,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .testTag("duration_slider")
+                        )
                     }
                 }
 
@@ -1038,5 +1023,82 @@ fun SettingsScreen(
                 )
             }
         }
+
+        Spacer(modifier = Modifier.height(32.dp))
+        
+        // Parameter 3: Experimental Features
+        Text(
+            text = "Experimental Features",
+            fontSize = 14.sp,
+            fontWeight = FontWeight.Bold,
+            color = MaterialTheme.colorScheme.primary,
+            modifier = Modifier.padding(bottom = 8.dp)
+        )
+        
+        val isBackgroundListening = viewModel.backgroundListeningEnabled.collectAsState().value
+        val isFloatingBubble = viewModel.floatingBubbleEnabled.collectAsState().value
+        
+        Card(
+            modifier = Modifier.fillMaxWidth(),
+            colors = CardDefaults.cardColors(
+                containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f)
+            )
+        ) {
+            Column(modifier = Modifier.padding(16.dp)) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            text = "Background Listening Mode",
+                            fontSize = 14.sp,
+                            fontWeight = FontWeight.Bold
+                        )
+                        Text(
+                            text = "Allow the app to continue monitoring noise levels even when you switch to other apps.",
+                            fontSize = 11.sp,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                    Switch(
+                        checked = isBackgroundListening,
+                        onCheckedChange = { viewModel.toggleBackgroundListening(it) },
+                        modifier = Modifier.testTag("toggle_background_listening")
+                    )
+                }
+                
+                Spacer(modifier = Modifier.height(16.dp))
+                HorizontalDivider(color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.1f))
+                Spacer(modifier = Modifier.height(16.dp))
+                
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            text = "Floating Bubble Mode",
+                            fontSize = 14.sp,
+                            fontWeight = FontWeight.Bold
+                        )
+                        Text(
+                            text = "Show the Quiet Monster as a floating bubble over other apps when minimized.",
+                            fontSize = 11.sp,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                    Switch(
+                        checked = isFloatingBubble,
+                        onCheckedChange = { viewModel.toggleFloatingBubble(it) },
+                        modifier = Modifier.testTag("toggle_floating_bubble")
+                    )
+                }
+            }
+        }
+        
+        Spacer(modifier = Modifier.height(32.dp))
     }
 }
